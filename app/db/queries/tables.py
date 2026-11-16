@@ -68,8 +68,16 @@ class Favorites(TypedTable):
     user_id: int
 
 
+class Bookmarks(TypedTable):
+    __table__ = "bookmarks"
+
+    article_id: int
+    user_id: int
+
+
 users = Users()
 articles = Articles()
 tags = Tags()
 articles_to_tags = ArticlesToTags()
 favorites = Favorites()
+bookmarks = Bookmarks()
