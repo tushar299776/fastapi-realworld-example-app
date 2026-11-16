@@ -9,6 +9,7 @@ from app.db.queries.tables import (
     Parameter,
     articles,
     articles_to_tags,
+    bookmarks,
     favorites,
     tags as tags_table,
     users,
@@ -291,6 +292,34 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
             slug=article.slug,
         )
 
+    async def is_article_bookmarked_by_user(self, *, slug: str, user: User) -> bool:
+        return (
+            await queries.is_article_bookmarked(
+                self.connection,
+                username=user.username,
+                slug=slug,
+            )
+        )["bookmarked"]
+
+    async def add_article_to_bookmarks(self, *, article: Article, user: User) -> None:
+        await queries.add_article_to_bookmarks(
+            self.connection,
+            username=user.username,
+            slug=article.slug,
+        )
+
+    async def remove_article_from_bookmarks(
+        self,
+        *,
+        article: Article,
+        user: User,
+    ) -> None:
+        await queries.remove_article_from_bookmarks(
+            self.connection,
+            username=user.username,
+            slug=article.slug,
+        )
+
     async def _get_article_from_db_record(
         self,
         *,
@@ -314,6 +343,12 @@ class ArticlesRepository(BaseRepository):  # noqa: WPS214
                 slug=slug,
             ),
             favorited=await self.is_article_favorited_by_user(
+                slug=slug,
+                user=requested_user,
+            )
+            if requested_user
+            else False,
+            bookmarked=await self.is_article_bookmarked_by_user(
                 slug=slug,
                 user=requested_user,
             )

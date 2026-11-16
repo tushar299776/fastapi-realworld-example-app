@@ -102,3 +102,53 @@ async def remove_article_from_favorites(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail=strings.ARTICLE_IS_NOT_FAVORITED,
     )
+
+
+@router.post(
+    "/{slug}/bookmark",
+    response_model=ArticleInResponse,
+    name="articles:bookmark-article",
+)
+async def bookmark_article(
+    article: Article = Depends(get_article_by_slug_from_path),
+    user: User = Depends(get_current_user_authorizer()),
+    articles_repo: ArticlesRepository = Depends(get_repository(ArticlesRepository)),
+) -> ArticleInResponse:
+    if not article.bookmarked:
+        await articles_repo.add_article_to_bookmarks(article=article, user=user)
+
+        return ArticleInResponse(
+            article=ArticleForResponse.from_orm(
+                article.copy(update={"bookmarked": True}),
+            ),
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Article is already bookmarked",
+    )
+
+
+@router.delete(
+    "/{slug}/bookmark",
+    response_model=ArticleInResponse,
+    name="articles:unbookmark-article",
+)
+async def unbookmark_article(
+    article: Article = Depends(get_article_by_slug_from_path),
+    user: User = Depends(get_current_user_authorizer()),
+    articles_repo: ArticlesRepository = Depends(get_repository(ArticlesRepository)),
+) -> ArticleInResponse:
+    if article.bookmarked:
+        await articles_repo.remove_article_from_bookmarks(article=article, user=user)
+
+        return ArticleInResponse(
+            article=ArticleForResponse.from_orm(
+                article.copy(update={"bookmarked": False}),
+            ),
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Article is not bookmarked",
+    )

@@ -1,12 +1,19 @@
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from starlette.status import HTTP_400_BAD_REQUEST
 
 from app.api.dependencies.authentication import get_current_user_authorizer
 from app.api.dependencies.database import get_repository
 from app.core.config import get_app_settings
 from app.core.settings.app import AppSettings
+from app.db.repositories.bookmarks import BookmarksRepository
 from app.db.repositories.users import UsersRepository
 from app.models.domain.users import User
+from app.models.schemas.articles import (
+    ArticleForResponse,
+    DEFAULT_ARTICLES_LIMIT,
+    DEFAULT_ARTICLES_OFFSET,
+    ListOfArticlesInResponse,
+)
 from app.models.schemas.users import UserInResponse, UserInUpdate, UserWithToken
 from app.resources import strings
 from app.services import jwt
@@ -70,4 +77,25 @@ async def update_current_user(
             image=user.image,
             token=token,
         ),
+    )
+
+
+@router.get("/bookmarks", response_model=ListOfArticlesInResponse, name="users:list-bookmarks")
+async def list_user_bookmarks(
+    limit: int = Query(DEFAULT_ARTICLES_LIMIT, ge=1, le=100),
+    offset: int = Query(DEFAULT_ARTICLES_OFFSET, ge=0),
+    user: User = Depends(get_current_user_authorizer()),
+    bookmarks_repo: BookmarksRepository = Depends(get_repository(BookmarksRepository)),
+) -> ListOfArticlesInResponse:
+    articles = await bookmarks_repo.list_user_bookmarks(
+        user=user,
+        limit=limit,
+        offset=offset,
+    )
+    articles_for_response = [
+        ArticleForResponse.from_orm(article) for article in articles
+    ]
+    return ListOfArticlesInResponse(
+        articles=articles_for_response,
+        articles_count=len(articles),
     )
